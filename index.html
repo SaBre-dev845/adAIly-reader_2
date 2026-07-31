@@ -373,16 +373,30 @@ function begriffCard(a,i){const r=rub(a);const im=imgSrc(a)||placeholder(a);
 function funSection(key,items){return secHead(RUBRICS[key].label,RUBRICS[key].c)+'<div class="stack">'+items.map(x=>funCard(x.a,x.i)).join("")+'</div>';}
 function funCard(a,i){const r=rub(a);const im=imgSrc(a)||placeholder(a);
   const media='<div class="media"><img src="'+esc(im)+'" alt="'+esc(a.title)+'" loading="lazy"></div>';
-  const actions=(a.rubric==="ramona"&&imgSrc(a))?ramonaActions(i):"";
+  const actions=(a.rubric==="ramona")?ramonaActions(i,a):"";
   return '<div class="art fun" '+openAttrs(i)+' style="--rc:'+r.c+'">'+media+
     '<div class="fun-pad"><span class="kick"><span class="dot"></span>'+esc(rubLabel(a))+'</span>'+
     '<h3>'+esc(a.title)+'</h3><p class="teaser">'+esc(teaserOf(a))+'</p>'+actions+foot(a,"Ansehen")+'</div></div>';
 }
-function ramonaActions(i){return '<div class="ramona-actions">'+
-  '<button class="mini-btn" type="button" data-paction="print" data-pi="'+i+'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9V3h12v6M6 18H4v-5a2 2 0 012-2h12a2 2 0 012 2v5h-2M8 14h8v6H8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Drucken</button>'+
-  '<button class="mini-btn" type="button" data-paction="dl" data-pi="'+i+'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 4v12M7 11l5 5 5-5M5 20h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Herunterladen</button></div>';}
-function doPaction(b){const a=getIssue(state.issueId).articles[+b.dataset.pi];const im=imgSrc(a);if(!im)return;
-  if(b.dataset.paction==="print")printImage(im);else downloadImage(im,a.title||"raetsel");}
+function ramonaActions(i,a){a=a||getIssue(state.issueId).articles[i];let out="";
+  if(a&&a.puzzleFile){out+='<button class="mini-btn" type="button" data-paction="dlpuzzle" data-pi="'+i+'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 4v12M7 11l5 5 5-5M5 20h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Rätsel herunterladen</button>';}
+  if(a&&a.solutionPdf){out+='<button class="mini-btn" type="button" data-paction="dlsolution" data-pi="'+i+'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 4v12M7 11l5 5 5-5M5 20h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Lösung</button>';}
+  return out?'<div class="ramona-actions">'+out+'</div>':"";}
+function b64Sniff(b64){if(!b64)return{ext:"bin",mime:"application/octet-stream"};
+  if(b64.slice(0,7)==="JVBERi0")return{ext:"pdf",mime:"application/pdf"};
+  if(b64.slice(0,4)==="/9j/")return{ext:"jpg",mime:"image/jpeg"};
+  if(b64.slice(0,10)==="iVBORw0KGg")return{ext:"png",mime:"image/png"};
+  if(b64.slice(0,6)==="R0lGOD")return{ext:"gif",mime:"image/gif"};
+  return{ext:"bin",mime:"application/octet-stream"};}
+function downloadFileB64(b64,name){if(!b64)return;try{const m=b64Sniff(b64);
+  const a=document.createElement("a");a.href="data:"+m.mime+";base64,"+b64;
+  a.download="adAIly-"+String(name).replace(/[^a-z0-9]+/gi,"-").toLowerCase().replace(/^-|-$/g,"")+"."+m.ext;
+  document.body.appendChild(a);a.click();a.remove();}catch(e){}}
+function doPaction(b){const a=getIssue(state.issueId).articles[+b.dataset.pi];const act=b.dataset.paction;
+  if(act==="print"){const im=imgSrc(a);if(im)printImage(im);}
+  else if(act==="dl"){const im=imgSrc(a);if(im)downloadImage(im,a.title||"bild");}
+  else if(act==="dlpuzzle"){downloadFileB64(a.puzzleFile,(a.title||"raetsel")+"-raetsel");}
+  else if(act==="dlsolution"){downloadFileB64(a.solutionPdf,(a.title||"raetsel")+"-loesung");}}
 function printImage(src){let pa=document.getElementById("printArea");if(!pa){pa=document.createElement("div");pa.id="printArea";document.body.appendChild(pa);}
   pa.innerHTML='<img src="'+src+'" alt="">';document.body.classList.add("printing");
   const done=()=>{document.body.classList.remove("printing");window.removeEventListener("afterprint",done);};
@@ -414,7 +428,7 @@ function drawReader(){
   const stat=im?"":((a.percent!=null)?'<div style="margin:8px 0 6px">'+donutSVG(a.percent,150)+'</div>':((a.bigNumber)?'<div class="reader-bignum">'+esc(a.bigNumber)+'</div>':""));
   const bullets='<ul class="reader-bullets">'+a.bullets.map(b=>'<li>'+esc(b)+'</li>').join("")+'</ul>';
   const words="";
-  const racts=(a.rubric==="ramona"&&im)?ramonaActions(idx):"";
+  const racts=(a.rubric==="ramona")?ramonaActions(idx,a):"";
   const source=a.source?'<div class="reader-source">'+(a.sourceUrl?'<a class="source-link" href="'+esc(a.sourceUrl)+'" target="_blank" rel="noopener"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M10 14a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14 10a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Quelle öffnen: '+esc(a.source)+'</a>':'<span class="source-link" style="background:#f1f4f8;color:var(--ink-soft)">Quelle: '+esc(a.source)+'</span>')+'<span class="source-meta">'+(a.sourceUrl?"Öffnet in neuem Tab":"Kein direkter Link hinterlegt")+'</span></div>':"";
   $("#readerBack").innerHTML='<article class="reader" style="--rc:'+r.c+';--read-scale:'+state.scale+'" onclick="event.stopPropagation()">'+
     '<div class="reader-top"><span class="accent"></span><span class="reader-rubric">'+esc(rubLabel(a))+'</span>'+
@@ -493,6 +507,18 @@ function fileToDataURL(file, cb){
   fr.readAsDataURL(file);
 }
 
+/* Datei (PDF oder Bild) unkomprimiert als reinen Base64-String einlesen,
+   ohne "data:...;base64," Prefix – Format für puzzleFile/solutionPdf. */
+function fileToRawBase64(file, cb){
+  const fr=new FileReader();
+  fr.onload=()=>{
+    const res=fr.result||"";
+    const idx=res.indexOf(",");
+    cb(idx>-1?res.slice(idx+1):res);
+  };
+  fr.readAsDataURL(file);
+}
+
 /* ===== Einzelnen Beitrag bearbeiten (nur Redaktionsmodus) ===== */
 function openEdit(idx){
   const issue=getIssue(state.issueId);const a=issue.articles[idx];const back=$("#importBack");
@@ -511,6 +537,16 @@ function openEdit(idx){
         '<button type="button" class="btn-ghost" id="eImgClear">Bild entfernen</button>'+
       '</div></div>'+
       '<div class="hint">Lade ein Bild von deinem PC hoch (JPG/PNG). Es wird automatisch komprimiert und gespeichert.</div></div>'+
+    (a.rubric==="ramona"?(
+    '<div class="field"><label>Rätsel-Datei (PDF oder Bild)</label><div class="img-edit-btns">'+
+      '<label class="btn-ghost upload-lbl"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 16V4M7 9l5-5 5 5M5 20h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Rätsel-Datei hochladen<input type="file" id="ePuzzleFile" accept="application/pdf,image/*" hidden></label>'+
+      '<button type="button" class="btn-ghost" id="ePuzzleClear">Datei entfernen</button></div>'+
+      '<div class="hint" id="ePuzzleStatus">'+(a.puzzleFile?"✓ Rätsel-Datei ist hinterlegt.":"Noch keine Rätsel-Datei hinterlegt.")+'</div></div>'+
+    '<div class="field"><label>Lösung-Datei (PDF oder Bild, optional)</label><div class="img-edit-btns">'+
+      '<label class="btn-ghost upload-lbl"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 16V4M7 9l5-5 5 5M5 20h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Lösung-Datei hochladen<input type="file" id="eSolutionFile" accept="application/pdf,image/*" hidden></label>'+
+      '<button type="button" class="btn-ghost" id="eSolutionClear">Datei entfernen</button></div>'+
+      '<div class="hint" id="eSolutionStatus">'+(a.solutionPdf?"✓ Lösung-Datei ist hinterlegt.":"Noch keine Lösung-Datei hinterlegt.")+'</div></div>'
+    ):"")+
     '<div class="modal-actions"><button class="btn-primary" id="eSave">Speichern</button><button class="btn-ghost" data-close>Abbrechen</button></div>'+
     '<div class="modal-msg" id="eMsg">'+(CustomStore.persistent?"Klick auf Speichern – Änderungen sind sofort für alle sichtbar.":"Hinweis: Datei lokal geöffnet. Änderungen gelten nur in dieser Sitzung.")+'</div>'+
     '</div></div>';
@@ -528,10 +564,38 @@ function openEdit(idx){
     pending.changed=true;pending.val=null;
     $("#eImgPrev").innerHTML='<span>Kein Bild</span>';
   });
-  $("#eSave").addEventListener("click",()=>saveEdit(issue.id,idx,pending));
+  const pendingPuzzle={changed:false,val:null};
+  const pendingSolution={changed:false,val:null};
+  const pf=$("#ePuzzleFile");
+  if(pf)pf.addEventListener("change",e=>{
+    const f=e.target.files[0];if(!f)return;
+    fileToRawBase64(f,b64=>{
+      pendingPuzzle.changed=true;pendingPuzzle.val=b64;
+      const st=$("#ePuzzleStatus");if(st)st.textContent="✓ Neue Rätsel-Datei ausgewählt: "+f.name;
+    });
+  });
+  const pc=$("#ePuzzleClear");
+  if(pc)pc.addEventListener("click",()=>{
+    pendingPuzzle.changed=true;pendingPuzzle.val=null;
+    const st=$("#ePuzzleStatus");if(st)st.textContent="Noch keine Rätsel-Datei hinterlegt.";
+  });
+  const sf=$("#eSolutionFile");
+  if(sf)sf.addEventListener("change",e=>{
+    const f=e.target.files[0];if(!f)return;
+    fileToRawBase64(f,b64=>{
+      pendingSolution.changed=true;pendingSolution.val=b64;
+      const st=$("#eSolutionStatus");if(st)st.textContent="✓ Neue Lösung-Datei ausgewählt: "+f.name;
+    });
+  });
+  const sc=$("#eSolutionClear");
+  if(sc)sc.addEventListener("click",()=>{
+    pendingSolution.changed=true;pendingSolution.val=null;
+    const st=$("#eSolutionStatus");if(st)st.textContent="Noch keine Lösung-Datei hinterlegt.";
+  });
+  $("#eSave").addEventListener("click",()=>saveEdit(issue.id,idx,pending,pendingPuzzle,pendingSolution));
 }
 
-async function saveEdit(issueId,idx,pending){
+async function saveEdit(issueId,idx,pending,pendingPuzzle,pendingSolution){
   const issue=JSON.parse(JSON.stringify(getIssue(issueId)));
   const a=issue.articles[idx];
   a.title=$("#eTitle").value.trim();
@@ -539,6 +603,13 @@ async function saveEdit(issueId,idx,pending){
   a.bullets=$("#eBullets").value.split("\n").map(s=>s.trim()).filter(Boolean);
   a.source=$("#eSource").value.trim();
   a.sourceUrl=$("#eUrl").value.trim();
+
+  if(pendingPuzzle&&pendingPuzzle.changed){
+    if(pendingPuzzle.val)a.puzzleFile=pendingPuzzle.val;else delete a.puzzleFile;
+  }
+  if(pendingSolution&&pendingSolution.changed){
+    if(pendingSolution.val)a.solutionPdf=pendingSolution.val;else delete a.solutionPdf;
+  }
 
   const imgKey="img:"+issueId+":"+idx;
   if(pending&&pending.changed){
