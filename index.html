@@ -204,20 +204,8 @@ img{display:block;max-width:100%}
 .cover-list{font-size:13.5px;color:var(--ink-soft);line-height:1.5;margin:0}
 .cover-foot{margin-top:auto;font-size:13px;font-weight:600;color:var(--blue);padding-top:8px}
 
-.stats-note{background:#f3f1fa;border:1px solid #e3dcf6;color:#4a1fb0;border-radius:12px;padding:14px 16px;font-size:14px;display:flex;gap:10px;align-items:flex-start;margin-bottom:22px}
-.stats-warn{background:#fff6e9;border-color:#f3dcae;color:#7a5512}
-.stat-tools{display:flex;gap:8px;align-items:center;margin:6px 0 18px;flex-wrap:wrap}
 .btn-ghost{border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 13px;font-size:13px;font-weight:500;color:var(--ink-soft);transition:background .15s}
 .btn-ghost:hover{background:#f1f4f8;color:var(--ink)}
-.stat-row{display:flex;align-items:center;gap:14px;padding:13px 0;border-bottom:1px solid var(--line)}
-.stat-rank{font-family:'Fira Sans Condensed';font-weight:700;font-size:18px;color:var(--ink-soft);width:26px;flex:none}
-.stat-main{flex:1;min-width:0}
-.stat-rubric{font-size:11px;letter-spacing:.7px;text-transform:uppercase;font-weight:600;color:var(--rc)}
-.stat-title{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.stat-track{height:9px;background:var(--grey);border-radius:6px;margin-top:7px;overflow:hidden}
-.stat-bar{height:100%;border-radius:6px;background:var(--rc,var(--blue));width:0;transition:width .6s ease}
-.stat-count{font-family:'Fira Sans Condensed';font-weight:700;font-size:20px;width:54px;text-align:right;flex:none}
-.stat-count small{font-weight:400;font-size:11px;color:var(--ink-soft);display:block;text-align:right;margin-top:-2px}
 
 .modal-back{position:fixed;inset:0;z-index:70;background:rgba(16,24,40,.58);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:24px}
 .modal-back.open{display:flex}
@@ -256,7 +244,6 @@ footer{border-top:1px solid var(--line);padding:22px 0;color:var(--ink-soft);fon
   <nav class="nav">
     <button data-view="issue" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none"><path d="M4 5h16M4 12h16M4 19h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="t">Aktuelle Ausgabe</span></button>
     <button data-view="archive"><svg class="ico" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="4" rx="1" stroke="currentColor" stroke-width="2"/><path d="M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8M10 13h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="t">Archiv</span></button>
-    <button data-view="stats"><svg class="ico" viewBox="0 0 24 24" fill="none"><path d="M5 19V11M12 19V5M19 19v-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="t">Statistik</span></button>
   </nav>
 </div>
 
@@ -283,11 +270,6 @@ const RUBRICS={
 };
 const TAGLINE="Echte News zu künstlicher Intelligenz in HR. Für alle, die ihren Kaffee gern mit einem Hauch Zukunft trinken.";
 
-const Analytics=(()=>{const has=(typeof window!=="undefined"&&window.storage&&typeof window.storage.get==="function");const mem={};
-  async function get(id){if(!has)return mem[id]||{};try{const r=await window.storage.get("clicks:"+id,true);return(r&&r.value)?JSON.parse(r.value):{};}catch(e){return{};}}
-  async function inc(id,aid){if(!has){mem[id]=mem[id]||{};mem[id][aid]=(mem[id][aid]||0)+1;return;}try{const c=await get(id);c[aid]=(c[aid]||0)+1;await window.storage.set("clicks:"+id,JSON.stringify(c),true);}catch(e){}}
-  async function reset(id){if(!has){mem[id]={};return;}try{await window.storage.set("clicks:"+id,JSON.stringify({}),true);}catch(e){}}
-  return{get,inc,reset,persistent:has};})();
 const CustomStore=(()=>{const has=(typeof window!=="undefined"&&window.storage&&typeof window.storage.get==="function");
   async function load(){if(!has)return[];try{const r=await window.storage.get("issues:custom",true);return(r&&r.value)?JSON.parse(r.value):[];}catch(e){return[];}}
   async function add(it){if(!has)throw new Error("s");const cur=await load();const f=cur.filter(i=>i.id!==it.id);f.unshift(it);await window.storage.set("issues:custom",JSON.stringify(f),true);}
@@ -419,7 +401,7 @@ function bindOpens(){
 }
 
 function openReader(idx){const issue=getIssue(state.issueId);state.readerArticle=idx;state.scale=1;
-  Analytics.inc(issue.id,artId(issue,issue.articles[idx],idx));drawReader();
+  drawReader();
   $("#readerBack").classList.add("open");document.body.style.overflow="hidden";}
 function closeReader(){$("#readerBack").classList.remove("open");document.body.style.overflow="";state.readerArticle=null;}
 function stepReader(d){const issue=getIssue(state.issueId);const nx=state.readerArticle+d;if(nx<0||nx>=issue.articles.length)return;openReader(nx);}
@@ -457,24 +439,6 @@ function renderArchive(){
   }).join("");
   app.innerHTML='<div class="section-head"><h2>Archiv</h2><p>Alle bisherigen Ausgaben der adAIly. Klick auf eine Ausgabe, um sie zu öffnen.</p></div><section class="archive-grid">'+cards+'</section>';
   document.querySelectorAll("[data-issue]").forEach(el=>el.addEventListener("click",()=>{state.issueId=el.dataset.issue;setView("issue");}));
-}
-
-async function renderStats(){
-  const issue=getIssue(state.issueId);
-  const opts=ALL_ISSUES.map(i=>'<option value="'+esc(i.id)+'" '+(i.id===issue.id?"selected":"")+'>Ausgabe '+esc(i.number)+' · '+esc(i.dateLabel)+'</option>').join("");
-  app.innerHTML='<div class="section-head"><h2>Statistik</h2><p>Anonyme Auswertung: wie oft wurde welcher Beitrag geöffnet?</p></div>'+
-    '<div class="stats-note '+(Analytics.persistent?"":"stats-warn")+'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="flex:none;margin-top:1px"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 11v5M12 8h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>'+(Analytics.persistent?"Erfasst werden ausschließlich Klickzahlen pro Beitrag, niemals wer geklickt hat. Alle Teammitglieder zählen gemeinsam.":"Hinweis: Hier werden Klicks nur lokal in dieser Sitzung gezählt. Im veröffentlichten Reader laufen sie teamweit zusammen.")+'</span></div>'+
-    '<div class="stat-tools"><select class="issue-select" id="statSelect">'+opts+'</select><button class="btn-ghost" id="statReset">Zähler dieser Ausgabe zurücksetzen</button></div>'+
-    '<div id="statList"></div>';
-  $("#statSelect").addEventListener("change",e=>{state.issueId=e.target.value;renderStats();});
-  $("#statReset").addEventListener("click",async()=>{if(confirm("Klickzähler dieser Ausgabe wirklich auf 0 setzen?")){await Analytics.reset(issue.id);renderStats();}});
-  const counts=await Analytics.get(issue.id);
-  const rows=issue.articles.map((a,idx)=>({a,id:artId(issue,a,idx),count:counts[artId(issue,a,idx)]||0}));
-  const max=Math.max(1,...rows.map(r=>r.count));const total=rows.reduce((s,r)=>s+r.count,0);
-  rows.sort((x,y)=>y.count-x.count);
-  $("#statList").innerHTML='<div style="margin:4px 0 14px;color:var(--ink-soft);font-size:14px">Insgesamt <b style="color:var(--ink)">'+total+'</b> Öffnungen in dieser Ausgabe.</div>'+
-    rows.map((r,rk)=>{const rc=rub(r.a).c;const pct=Math.round(r.count/max*100);
-      return '<div class="stat-row" style="--rc:'+rc+'"><span class="stat-rank">'+(rk+1)+'</span><div class="stat-main"><div class="stat-rubric">'+esc(rubLabel(r.a))+'</div><div class="stat-title">'+esc(r.a.title)+'</div><div class="stat-track"><div class="stat-bar" style="width:'+pct+'%"></div></div></div><span class="stat-count">'+r.count+'<small>Klicks</small></span></div>';}).join("");
 }
 
 function openImport(){const tpl=JSON.stringify(getIssue(state.issueId),null,2);const back=$("#importBack");
@@ -690,7 +654,7 @@ $("#redToggle").addEventListener("click",()=>{EDITOR=!EDITOR;
   applyEditorUI();render();});
 applyEditorUI();
 
-function render(){if(state.view==="issue")renderIssue();else if(state.view==="archive")renderArchive();else if(state.view==="stats")renderStats();}
+function render(){if(state.view==="issue")renderIssue();else if(state.view==="archive")renderArchive();}
 document.querySelectorAll(".nav button[data-view]").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
 $("#readerBack").addEventListener("click",closeReader);
 $("#importBack").addEventListener("click",closeImport);
